@@ -1,0 +1,22 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- mostrador -->
+    <path
+        android:fillColor="#FFFAF7F2"
+        android:pathData="M54,30 A24,24 0 1 1 53.99,30 Z" />
+    <!-- pontinhos das horas -->
+    <path
+        android:fillColor="#C9CEE8"
+        android:pathData="M52.5,33 h3 v4 h-3 Z M52.5,71 h3 v4 h-3 Z M33,52.5 h4 v3 h-4 Z M71,52.5 h4 v3 h-4 Z" />
+    <!-- visto -->
+    <path
+        android:strokeColor="#F0A23B"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000"
+        android:pathData="M43,55 L51,63 L66,46" />
+</vector>
