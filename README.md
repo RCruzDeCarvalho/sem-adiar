@@ -15,4 +15,4 @@ App Android para quem adia tarefas que não têm data. A regra é simples. **Nen
 
 ## Instalar
 
-Descarregar o `.apk` da [última versão](https://github.com/RCruzDeCarvalho/sem-adiar/releases/latest) e abrir no telemóvel. As versões novas instalam por cima sem perder nada.
+Descarregar o `.apk` da [última versão](https://github.com/RCruzDeCarvalho/sem-adiar/releases/latest), ou no site [semlegendas.pt](https://semlegendas.pt/#sem-adiar) e abrir no telemóvel. As versões novas instalam por cima sem perder nada.
