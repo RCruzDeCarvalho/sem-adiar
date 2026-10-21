@@ -31,7 +31,12 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.activity.compose.BackHandler
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ModalBottomSheetProperties
+import androidx.compose.material3.SheetValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -118,11 +123,24 @@ fun CaptureSheet(onSave: (Task) -> Unit, onDismiss: () -> Unit) {
         onSave(Task(title = title.replaceFirstChar { it.uppercase() }, due = due, steps = if (step.isBlank()) emptyList() else listOf(Step(step.trim()))))
     }
 
+    // Sair sem guardar (voltar atrás, deslizar para baixo ou tocar fora) pergunta primeiro
+    val dirty = text.isNotBlank() || step.isNotBlank()
+    val dirtyNow by rememberUpdatedState(dirty)
+    var askLeave by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true,
+        confirmValueChange = { v ->
+            if (v == SheetValue.Hidden && dirtyNow) { askLeave = true; false } else true
+        }
+    )
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = cs.surface
+        sheetState = sheetState,
+        containerColor = cs.surface,
+        properties = ModalBottomSheetProperties(shouldDismissOnBackPress = !dirty)
     ) {
+        BackHandler(enabled = dirty) { askLeave = true }
         // Cabeçalho fixo, sempre visível mesmo com o teclado aberto
         Row(
             Modifier.fillMaxWidth().padding(start = 20.dp, end = 14.dp, bottom = 4.dp),
@@ -209,16 +227,27 @@ fun CaptureSheet(onSave: (Task) -> Unit, onDismiss: () -> Unit) {
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
             )
-            Spacer(Modifier.height(18.dp))
-            Button(
-                onClick = { save() },
-                enabled = text.isNotBlank(),
-                modifier = Modifier.fillMaxWidth().height(54.dp),
-                shape = RoundedCornerShape(50)
-            ) { Text("Guardar", fontSize = 16.sp) }
+            Spacer(Modifier.height(8.dp))
         }
     }
     if (picking) PickDate(due, { chosen = it }, { picking = false })
+    if (askLeave) AlertDialog(
+        onDismissRequest = { askLeave = false },
+        title = { Text("Guardar a tarefa?") },
+        text = { Text("Ainda não guardaste \u201C${text.trim().ifBlank { step.trim() }}\u201D.") },
+        confirmButton = {
+            Button(onClick = { askLeave = false; if (text.isNotBlank()) save() else onDismiss() }, shape = RoundedCornerShape(50)) {
+                Text(if (text.isNotBlank()) "Guardar" else "Sair")
+            }
+        },
+        dismissButton = {
+            Row {
+                TextButton(onClick = { askLeave = false; onDismiss() }) { Text("Descartar", color = Palette.Late) }
+                TextButton(onClick = { askLeave = false }) { Text("Continuar") }
+            }
+        },
+        shape = RoundedCornerShape(28.dp)
+    )
 }
 
 // ---------------------------------------------------------------- Ficha da tarefa
