@@ -50,6 +50,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.ui.composed
+import androidx.compose.ui.focus.onFocusChanged
 
 /** Círculo para marcar como feito, com uma pequena animação antes de avisar. */
 @Composable
@@ -184,7 +190,7 @@ fun StepsEditor(
         OutlinedTextField(
             value = draft,
             onValueChange = { draft = it },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().keepVisible(),
             placeholder = { Text(if (steps.isEmpty()) "Escreve um passo pequenino…" else "Mais um passo…") },
             shape = RoundedCornerShape(16.dp),
             singleLine = true,
@@ -195,4 +201,19 @@ fun StepsEditor(
             }
         )
     }
+}
+
+/** Quando o campo ganha foco, espera pelo teclado e desliza até ele ficar à vista. */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+fun Modifier.keepVisible(): Modifier = composed {
+    val req = remember { BringIntoViewRequester() }
+    val imeVisible = WindowInsets.isImeVisible
+    var focused by remember { mutableStateOf(false) }
+    LaunchedEffect(focused, imeVisible) {
+        if (focused) {
+            delay(250)
+            req.bringIntoView()
+        }
+    }
+    this.bringIntoViewRequester(req).onFocusChanged { focused = it.isFocused }
 }

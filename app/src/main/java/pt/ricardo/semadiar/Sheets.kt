@@ -123,7 +123,10 @@ fun CaptureSheet(onSave: (Task) -> Unit, onDismiss: () -> Unit) {
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = cs.surface
     ) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 20.dp).imePadding()) {
+        Column(
+            Modifier.fillMaxWidth().imePadding().verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp).padding(bottom = 20.dp)
+        ) {
             Text("O que tens de fazer?", style = MaterialTheme.typography.headlineSmall)
             Spacer(Modifier.height(4.dp))
             Text("Podes escrever a data no texto: \"ligar à Ana na sexta\".", color = cs.onSurfaceVariant, fontSize = 13.sp)
@@ -181,7 +184,7 @@ fun CaptureSheet(onSave: (Task) -> Unit, onDismiss: () -> Unit) {
             OutlinedTextField(
                 value = step,
                 onValueChange = { step = it },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().keepVisible(),
                 label = { Text("Primeiro passo pequenino (opcional)") },
                 placeholder = { Text("Ex.: procurar o número") },
                 shape = RoundedCornerShape(18.dp),
@@ -229,7 +232,7 @@ fun TaskSheet(
         containerColor = cs.surface
     ) {
         Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 24.dp).imePadding()
+            Modifier.fillMaxWidth().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 24.dp)
         ) {
             OutlinedTextField(
                 value = title,
