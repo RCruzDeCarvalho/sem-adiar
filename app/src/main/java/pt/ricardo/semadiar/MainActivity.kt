@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -41,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -66,7 +68,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Tab(val label: String) { HOJE("Hoje"), PROXIMAS("Próximas"), FEITAS("Feitas"), DEFINICOES("Definições") }
+private enum class Tab(val label: String) { HOJE("Hoje"), PROXIMAS("Próximas"), FEITAS("Feitas"), MEDALHAS("Medalhas"), DEFINICOES("Definições") }
 
 @Composable
 private fun App(incoming: MutableState<Intent?>) {
@@ -94,6 +96,17 @@ private fun App(incoming: MutableState<Intent?>) {
     var breakdownFresh by rememberSaveable { mutableStateOf(false) }
     var timer by remember { mutableStateOf(Timer.state(c)) }
     var confetti by remember { mutableIntStateOf(0) }
+    var medals by remember { mutableStateOf<List<Achievements.Unlock>>(emptyList()) }
+
+    // Sempre que algo muda, vê se há medalhas novas
+    LaunchedEffect(version) {
+        val news = Achievements.evaluate(c)
+        if (news.isNotEmpty()) {
+            kotlinx.coroutines.delay(900)   // deixa acabar os confetis da tarefa
+            medals = medals + news
+            confetti++
+        }
+    }
 
     fun toast(msg: String) {
         scope.launch { snack.currentSnackbarData?.dismiss(); snack.showSnackbar(msg) }
@@ -142,6 +155,7 @@ private fun App(incoming: MutableState<Intent?>) {
         val i = incoming.value ?: return@LaunchedEffect
         Store.invalidate(); refresh()
         when {
+            i.getBooleanExtra("medals", false) -> tab = Tab.MEDALHAS
             i.getBooleanExtra("capture", false) -> { tab = Tab.HOJE; capture = true }
             i.getStringExtra("start") != null -> start(i.getStringExtra("start")!!)
             i.getStringExtra("stuck") != null -> stuckId = i.getStringExtra("stuck")
@@ -183,12 +197,13 @@ private fun App(incoming: MutableState<Intent?>) {
                                         Tab.HOJE -> Icons.Filled.Home
                                         Tab.PROXIMAS -> Icons.Filled.DateRange
                                         Tab.FEITAS -> Icons.Filled.CheckCircle
+                                        Tab.MEDALHAS -> Icons.Filled.Star
                                         Tab.DEFINICOES -> Icons.Filled.Settings
                                     },
                                     null
                                 )
                             },
-                            label = { Text(t.label) },
+                            label = { Text(t.label, maxLines = 1, softWrap = false, fontSize = 11.sp) },
                             colors = NavigationBarItemDefaults.colors(indicatorColor = cs.secondaryContainer)
                         )
                     }
@@ -200,6 +215,7 @@ private fun App(incoming: MutableState<Intent?>) {
                     Tab.HOJE -> TodayScreen(tasks, Settings.focusMax(c), ops)
                     Tab.PROXIMAS -> UpcomingScreen(tasks, ops)
                     Tab.FEITAS -> DoneScreen(tasks, onUndo = { Actions.undo(c, it); refresh() }, onOpen = { openId = it })
+                    Tab.MEDALHAS -> MedalsScreen()
                     Tab.DEFINICOES -> SettingsScreen(onDataChanged = { Store.invalidate(); refresh() })
                 }
             }
@@ -213,6 +229,12 @@ private fun App(incoming: MutableState<Intent?>) {
             toast(if (t.due == today()) "Apontado para hoje ✓" else "Apontado para ${Dates.short(t.due)} ✓")
         },
         onDismiss = { capture = false }
+    )
+
+    if (medals.isNotEmpty() && timer == null) UnlockDialog(
+        medals,
+        onClose = { medals = emptyList() },
+        onSeeAll = { medals = emptyList(); openId = null; tab = Tab.MEDALHAS }
     )
 
     task(openId)?.let { t ->

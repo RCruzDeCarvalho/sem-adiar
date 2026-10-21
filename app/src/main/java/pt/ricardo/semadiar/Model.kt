@@ -25,7 +25,9 @@ data class Task(
     val postpones: Int = 0,      // quantas vezes foi adiada
     val doneAt: Long = 0L,
     val droppedAt: Long = 0L,    // largada sem culpa
-    val minutes: Int = 0         // minutos trabalhados nos blocos de 10
+    val minutes: Int = 0,        // minutos trabalhados nos blocos de 10
+    val splitDay: String = "",   // dia em que foi partida em passos
+    val splitCounted: Boolean = false
 ) {
     val active get() = doneAt == 0L && droppedAt == 0L
     val nextStep: String? get() = steps.firstOrNull { !it.done }?.text
@@ -98,6 +100,8 @@ object Store {
                     .put("doneAt", t.doneAt)
                     .put("droppedAt", t.droppedAt)
                     .put("minutes", t.minutes)
+                    .put("splitDay", t.splitDay)
+                    .put("splitCounted", t.splitCounted)
             )
         }
         return a
@@ -119,7 +123,9 @@ object Store {
                 postpones = o.optInt("postpones"),
                 doneAt = o.optLong("doneAt"),
                 droppedAt = o.optLong("droppedAt"),
-                minutes = o.optInt("minutes")
+                minutes = o.optInt("minutes"),
+                splitDay = o.optString("splitDay"),
+                splitCounted = o.optBoolean("splitCounted")
             )
         } catch (_: Exception) {
             null
@@ -174,7 +180,15 @@ object Changes {
 
 /** As acções sobre tarefas, usadas pela app, pelas notificações e pelo widget. */
 object Actions {
+    /** Contas para as medalhas quando uma tarefa fica feita. */
+    private fun finished(c: Context, t: Task?) {
+        if (t == null || t.doneAt > 0) return
+        if (t.postpones >= 3 || t.ageDays() >= 14) Stats.inc(c, "teimosas")
+        Stats.addDay(c)
+    }
+
     fun complete(c: Context, id: String) {
+        finished(c, Store.get(c, id))
         Store.edit(c, id) { it.copy(doneAt = System.currentTimeMillis(), steps = it.steps.map { s -> s.copy(done = true) }) }
         Nagger.cancelNag(c)
     }
@@ -195,6 +209,7 @@ object Actions {
     }
 
     fun drop(c: Context, id: String) {
+        if (Store.get(c, id)?.droppedAt == 0L) Stats.inc(c, "largadas")
         Store.edit(c, id) { it.copy(droppedAt = System.currentTimeMillis()) }
         Nagger.cancelNag(c)
     }
@@ -205,15 +220,28 @@ object Actions {
     /** Marca ou desmarca um passo. Devolve true se assim a tarefa ficou toda feita. */
     fun toggleStep(c: Context, id: String, index: Int): Boolean {
         var finished = false
+        val before = Store.get(c, id)
+        val marking = before?.steps?.getOrNull(index)?.done == false
+        if (marking && before != null) {
+            Stats.addDay(c)
+            if (before.splitDay == today().toString() && !before.splitCounted) Stats.inc(c, "partidas")
+            if (before.steps.count { !it.done } == 1) finished(c, before)
+        }
         Store.edit(c, id) { t ->
             val steps = t.steps.mapIndexed { i, s -> if (i == index) s.copy(done = !s.done) else s }
             finished = steps.isNotEmpty() && steps.all { it.done }
-            t.copy(steps = steps, doneAt = if (finished) System.currentTimeMillis() else 0L)
+            t.copy(
+                steps = steps,
+                doneAt = if (finished) System.currentTimeMillis() else 0L,
+                splitCounted = t.splitCounted || (marking && t.splitDay == today().toString())
+            )
         }
         return finished
     }
 
-    fun setSteps(c: Context, id: String, steps: List<Step>) = Store.edit(c, id) { it.copy(steps = steps) }
+    fun setSteps(c: Context, id: String, steps: List<Step>) = Store.edit(c, id) {
+        it.copy(steps = steps, splitDay = if (it.splitDay.isBlank() && steps.isNotEmpty()) today().toString() else it.splitDay)
+    }
 
     fun addMinutes(c: Context, id: String, m: Int) {
         if (m > 0) Store.edit(c, id) { it.copy(minutes = it.minutes + m) }

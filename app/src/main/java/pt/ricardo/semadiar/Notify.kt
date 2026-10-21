@@ -28,6 +28,7 @@ class NagWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
         Nagger.run(applicationContext)
         Backup.daily(applicationContext)
         Updater.notifyIfNew(applicationContext)
+        Achievements.notifyNew(applicationContext)
         kotlinx.coroutines.runBlocking { TodayWidget.refresh(applicationContext) }
         return Result.success()
     }
@@ -215,6 +216,8 @@ object Timer {
     fun start(c: Context, id: String, minutes: Int = 10): State {
         val now = System.currentTimeMillis()
         val prev = state(c)
+        // Conta um bloco novo (recomeçar um que ainda está a correr não conta)
+        if (prev == null || prev.id != id || prev.end <= now) { Stats.inc(c, "blocos"); Stats.addDay(c) }
         // Se já estava a contar nesta tarefa, "mais 10" continua a partir de agora
         val begin = if (prev != null && prev.id == id) prev.start else now
         val end = now + minutes * 60_000L

@@ -12,8 +12,8 @@ android {
         applicationId = "pt.ricardo.semadiar"
         minSdk = 26
         targetSdk = 34
-        versionCode = 4
-        versionName = "0.4"
+        versionCode = 5
+        versionName = "0.5"
 
         buildConfigField("String", "UPDATE_REPO", "\"RCruzDeCarvalho/sem-adiar\"")
         buildConfigField("String", "KOFI", "\"https://ko-fi.com/semlegendas\"")

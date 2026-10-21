@@ -33,7 +33,43 @@ object Backup {
             .put("exported", System.currentTimeMillis())
             .put("tasks", JSONArray(Store.raw(c)))
             .put("settings", settings)
+            .put("extra", extras(c))
             .toString(2)
+    }
+
+    /** Medalhas e contadores, para não se perderem ao mudar de telemóvel. */
+    private val extraPrefs = listOf("estatisticas", "conquistas")
+
+    private fun extras(c: Context): JSONObject {
+        val out = JSONObject()
+        extraPrefs.forEach { name ->
+            val o = JSONObject()
+            c.applicationContext.getSharedPreferences(name, Context.MODE_PRIVATE).all.forEach { (k, v) ->
+                when (v) {
+                    is Int -> o.put(k, JSONObject().put("i", v))
+                    is Set<*> -> o.put(k, JSONObject().put("set", JSONArray(v.map { it.toString() })))
+                }
+            }
+            out.put(name, o)
+        }
+        return out
+    }
+
+    private fun restoreExtras(c: Context, o: JSONObject?) {
+        if (o == null) return
+        extraPrefs.forEach { name ->
+            val p = o.optJSONObject(name) ?: return@forEach
+            val ed = c.applicationContext.getSharedPreferences(name, Context.MODE_PRIVATE).edit().clear()
+            p.keys().forEach { k ->
+                val v = p.getJSONObject(k)
+                if (v.has("i")) ed.putInt(k, v.getInt("i"))
+                if (v.has("set")) {
+                    val a = v.getJSONArray("set")
+                    ed.putStringSet(k, (0 until a.length()).map { a.getString(it) }.toSet())
+                }
+            }
+            ed.commit()
+        }
     }
 
     fun writeTo(c: Context, target: Uri): Boolean = try {
@@ -77,6 +113,7 @@ object Backup {
             s.keys().forEach { k -> ed.putInt(k, s.optInt(k)) }
             ed.commit()
         }
+        restoreExtras(c, o.optJSONObject("extra"))
         return Store.tasks(c).size
     }
 }
